@@ -272,7 +272,7 @@ if __name__ == '__main__':
     s0_list = [1, 2, 4]
     graph_list = ['ER', 'SF']
     type_list = ['linear', 'nonlinear']
-    linear_type = ['gauss', 'exp', 'gumbel', 'uniform', 'logistic', 'poisson']
+    linear_type = ['gauss', 'exp', 'gumbel', 'uniform', 'logistic']
     nonlinear_sem_type = 'mlp'
     linear_sem_type = 'gauss'
 

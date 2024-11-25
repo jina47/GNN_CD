@@ -9,6 +9,7 @@
 import numpy as np
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 
 from layers import CustomSAGEConv
 
@@ -16,27 +17,8 @@ from layers import CustomSAGEConv
 class GraphSAGE(nn.Module):
 
     def __init__(self, node_dim, edge_dim, num_layers,
-                 agg_class='mean', dropout=0.3, num_samples=25,
+                 agg_class='mean', dropout=0.5, num_samples=3, output_class = 2,
                  device='cpu'):
-        """
-        Parameters
-        ----------
-        input_dim : int
-            Dimension of input node features.
-        hidden_dims : list of ints
-            Dimension of hidden layers. Must be non empty.
-        output_dim : int
-            Dimension of output node features.
-        agg_class : An aggregator class.
-            Aggregator. One of the aggregator classes imported at the top of
-            this module. Default: MaxPoolAggregator.
-        dropout : float
-            Dropout rate. Default: 0.5.
-        num_samples : int
-            Number of neighbors to sample while aggregating. Default: 25.
-        device : str
-            'cpu' or 'cuda:0'. Default: 'cpu'.
-        """
         super(GraphSAGE, self).__init__()
 
         self.node_dim = node_dim
@@ -46,42 +28,28 @@ class GraphSAGE(nn.Module):
         self.device = device
         self.num_layers = num_layers
 
-        self.conv = CustomSAGEConv(node_dim, edge_dim)
-        self.mlp = nn.Sequential(nn.Linear(2*node_dim, 64), nn.ReLU(), nn.Linear(64, 3))
-
+        self.conv1 = CustomSAGEConv(node_dim, edge_dim, device=self.device)
+        self.conv2 = CustomSAGEConv(node_dim, edge_dim, device=self.device)
+        self.conv3 = CustomSAGEConv(node_dim, edge_dim, device=self.device)
+        # self.mlp = nn.Sequential(nn.Linear(2*node_dim, 128), nn.ReLU(), nn.Linear(128, 64), nn.ReLU(), nn.Linear(64, output_class))
+        self.mlp = nn.Sequential(nn.Linear(2 * node_dim, 256), nn.ReLU(), nn.Linear(256, 128), nn.ReLU(),
+                    nn.Linear(128, 64), nn.ReLU(), nn.Linear(64, 1),  
+                    # nn.Sigmoid()
+                    )
+        
         self.bns = nn.BatchNorm1d(node_dim)
         self.dropout = nn.Dropout(dropout)
         self.relu = nn.ReLU()
 
     def forward(self, data):
-        """
-        Parameters
-        ----------
-        features : torch.Tensor
-            An (n' x input_dim) tensor of input node features.
-        node_layers : list of numpy array
-            node_layers[i] is an array of the nodes in the ith layer of the
-            computation graph.
-        mappings : list of dictionary
-            mappings[i] is a dictionary mapping node v (labelled 0 to |V|-1)
-            in node_layers[i] to its position in node_layers[i]. For example,
-            if node_layers[i] = [2,5], then mappings[i][2] = 0 and
-            mappings[i][5] = 1.
-        rows : numpy array
-            rows[i] is an array of neighbors of node i.
-
-        Returns
-        -------
-        out : torch.Tensor
-            An (len(node_layers[-1]) x output_dim) tensor of output node features.
-        """
         x = data.x
         edge_index = data.edge_index
         edge_features = data.edge_attr
         num_nodes = data.num_nodes
 
         for k in range(self.num_layers):
-            x = self.conv(x, edge_index, edge_features, num_nodes)
+            x = self.conv1(x, edge_index, edge_features, num_nodes, num_neighbor=self.num_samples)
+            # x = self.conv2(x, edge_index, edge_features, num_nodes, num_neighbor=self.num_samples)
             x = self.dropout(x)
             x = self.relu(x)
         
@@ -91,8 +59,8 @@ class GraphSAGE(nn.Module):
         u_node_embedding = x[u]  
 
         pair_embedding = torch.cat([v_node_embedding, u_node_embedding], dim=-1)
-        pred = self.mlp(pair_embedding)  # MLP를 통해 예측 (3 클래스 분류: -1, 0, 1)
-
+        pred = self.mlp(pair_embedding)  # MLP를 통해 예측 (3 클래스 분류: 0, 1, 2)
+        # pred = F.log_softmax(pred, dim=1)
         return pred
     
 

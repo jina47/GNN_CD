@@ -43,7 +43,8 @@ def simulate_dag(d, s0, graph_type):
 
     if graph_type == 'ER':
         # Erdos-Renyi
-        G_und = ig.Graph.Erdos_Renyi(n=d, m=s0)
+        # G_und = ig.Graph.Erdos_Renyi(n=d, m=s0)
+        G_und = ig.Graph.Erdos_Renyi(n=d, p=0.5)
         B_und = _graph_to_adjmat(G_und)
         B = _random_acyclic_orientation(B_und)
     elif graph_type == 'SF':
@@ -213,7 +214,7 @@ def generate_data(n, d, s0, graph_type, linear_sem_type, nonlinear_sem_type, typ
         new_folder_num = int(existing_folders[-1]) + 1
     else:
         new_folder_num = 1
-    new_folder_name = f'{new_folder_num:03}'
+    new_folder_name = f'{new_folder_num:06}'
     new_folder_path = os.path.join(save_dir, new_folder_name)    
     os.makedirs(new_folder_path)
 
@@ -221,7 +222,8 @@ def generate_data(n, d, s0, graph_type, linear_sem_type, nonlinear_sem_type, typ
     if type == 'linear':
         B_true = simulate_dag(d, s0, graph_type)
         W_true = simulate_parameter(B_true)
-        X = simulate_linear_sem(W_true, n, linear_sem_type)
+        noise_scale = [random.uniform(0.1, 1.0) for _ in range(B_true.shape[0])]
+        X = simulate_linear_sem(W_true, n, linear_sem_type, noise_scale)
         np.savetxt(os.path.join(new_folder_path, f'B_true_{graph_type}_{linear_sem_type}.csv'), B_true, delimiter=',')
         # 필요한지 확인..?
         np.savetxt(os.path.join(new_folder_path, f'W_true_{graph_type}_{linear_sem_type}.csv'), W_true, delimiter=',')
@@ -230,7 +232,8 @@ def generate_data(n, d, s0, graph_type, linear_sem_type, nonlinear_sem_type, typ
     # nonlinear sem
     else:
         B_true = simulate_dag(d, s0, graph_type)
-        X = simulate_nonlinear_sem(B_true, n, nonlinear_sem_type)
+        noise_scale = [random.uniform(0.1, 1.0) for _ in range(B_true.shape[0])]
+        X = simulate_nonlinear_sem(B_true, n, nonlinear_sem_type, noise_scale)
         np.savetxt(os.path.join(new_folder_path, f'B_true_{graph_type}_{nonlinear_sem_type}.csv'), B_true, delimiter=',')
         np.savetxt(os.path.join(new_folder_path, f'X_{graph_type}_{nonlinear_sem_type}.csv'), X, delimiter=',')
     
@@ -262,6 +265,7 @@ if __name__ == '__main__':
 
     parser.add_argument('--save_dir', type=str, default = '/home/jina/reprod/data/train')
     parser.add_argument('--num_graph', type=int, default = 200)
+    parser.add_argument('--graph_type', type=str, default = 'ER')
 
     args = parser.parse_args()
 
@@ -269,12 +273,12 @@ if __name__ == '__main__':
 
     n_list = [500, 1000, 2000]
     d_list = [10, 20, 50, 100]
-    s0_list = [1, 2, 4]
+    # s0_list = [1, 2, 4]
     graph_list = ['ER', 'SF']
     type_list = ['linear', 'nonlinear']
-    linear_type = ['gauss', 'exp', 'gumbel', 'uniform', 'logistic']
+    linear_type = ['gauss', 'exp', 'gumbel', 'uniform', 'logistic', 'poisson']
     nonlinear_sem_type = 'mlp'
-    linear_sem_type = 'gauss'
+    linear_sem_type = 'exp'
 
     for _ in range(num_graph):
         seed = random.randint(0, 10000)
@@ -282,11 +286,12 @@ if __name__ == '__main__':
 
         n = random.choice(n_list)
         d = random.choice(d_list)
-        s0 = d * random.choice(s0_list)
-        graph_type = random.choice(graph_list)
+        max_edge = d * (d-1) // 2
+        s0 = int(max_edge * random.uniform(0.3, 0.8))
+        # graph_type = random.choice(graph_list)
         sem_type = random.choice(type_list)
         if sem_type == 'linear':
             linear_sem_type = random.choice(linear_type)
 
-        generate_data(n=n, d=d, s0=s0, graph_type=graph_type, linear_sem_type=linear_sem_type, nonlinear_sem_type=nonlinear_sem_type, type=sem_type, save_dir=args.save_dir)
+        generate_data(n=n, d=d, s0=s0, graph_type=args.graph_type, linear_sem_type=linear_sem_type, nonlinear_sem_type=nonlinear_sem_type, type=sem_type, save_dir=args.save_dir)
 

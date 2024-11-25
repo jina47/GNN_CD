@@ -28,7 +28,7 @@ def weighted_std(values, weights=None):
 
 
 def count_unique(x):
-    return len(set(x))
+    return len(np.unique(x))
 
 
 def count_unique_ratio(x):
@@ -58,16 +58,18 @@ def binary_entropy(p, base):
 
 def discrete_probability(x, ffactor=3, maxdev=3):    
     x = discretized_sequence(x, ffactor, maxdev)
+    if isinstance(x, np.ndarray):
+        x = x.flatten().tolist()
     return Counter(x)
 
 
-def discretized_values(x, ffactor=3, maxdev=3):
+def discretized_values(x, ffactor=3, maxdev=3): # return 값 list
     if count_unique(x) > (2*ffactor*maxdev+1):
         vmax =  ffactor*maxdev
         vmin = -ffactor*maxdev
         return range(vmin, vmax+1)
     else:
-        return sorted(list(set(x)))
+        return sorted(np.unique(x))
 
 
 def len_discretized_values(x, ffactor, maxdev):
@@ -77,9 +79,15 @@ def len_discretized_values(x, ffactor, maxdev):
 def discretized_sequence(x, ffactor, maxdev, norm=True):
     if not norm or (count_unique(x) > len_discretized_values(x, ffactor, maxdev)):
         if norm:
-            x = (x - np.mean(x))/np.std(x)
+            if np.mean(x) == np.nan:
+                x = x/np.std(x)
+            else:
+                x = (x - np.mean(x))/np.std(x)
             xf = x[abs(x) < maxdev]
-            x = (x - np.mean(xf))/np.std(xf)
+            if np.mean(xf) == np.nan:
+                x = x/np.std(xf)
+            else:
+                x = (x - np.mean(xf))/np.std(xf)
         x = np.round(x*ffactor)
         vmax =  ffactor*maxdev
         vmin = -ffactor*maxdev
@@ -94,6 +102,10 @@ def discretized_sequences(x, y, ffactor=3, maxdev=3):
 
 def normalized_error_probability(x, y, ffactor=3, maxdev=3):
     x, y = discretized_sequences(x, y, ffactor, maxdev)
+    if isinstance(x, np.ndarray):
+        x = x.flatten().tolist()
+    if isinstance(y, np.ndarray):
+        y = y.flatten().tolist()
     cx = Counter(x)
     cy = Counter(y)
     nx = len(cx)
@@ -118,7 +130,7 @@ def discrete_entropy(x, ffactor=3, maxdev=3, bias_factor=0.7):
     return S + bias_factor*(len(pk) - 1)/float(2*len(x))
 
 
-def discrete_divergence(cx, cy):
+def discrete_divergence(cx, cy): #
     for a, v in cx.most_common():
         if cy[a] == 0: cy[a] = 1
 
@@ -134,15 +146,18 @@ def discrete_divergence(cx, cy):
 
 def discrete_joint_entropy(x, y, ffactor=3, maxdev=3):
     x, y = discretized_sequences(x, y, ffactor, maxdev)
-    return discrete_entropy(zip(x,y))
+    return discrete_entropy(np.stack((x, y), axis=-1))
 
 
 def normalized_discrete_joint_entropy(x, y, ffactor=3, maxdev=3):
     x, y = discretized_sequences(x, y, ffactor, maxdev)
-    e = discrete_entropy(zip(x,y))
+    e = discrete_entropy(np.stack((x, y), axis=-1))
     nx = len_discretized_values(x, ffactor, maxdev)
     ny = len_discretized_values(y, ffactor, maxdev)
-    if nx*ny>0: e = e/np.log(nx*ny)
+    if nx*ny>0: 
+        e = e/np.log(nx*ny)
+    if e == np.nan:
+        e = 0
     return e
 
 
@@ -166,7 +181,10 @@ def discrete_mutual_information(x, y):
 def normalized_discrete_entropy(x, ffactor=3, maxdev=3):
     e = discrete_entropy(x, ffactor, maxdev)
     n = len_discretized_values(x, ffactor, maxdev)
-    if n>0: e = e/np.log(n)
+    if n>0: 
+        e = e/np.log(n)
+    if e == np.nan:
+        e = 0
     return e
 
 
@@ -183,7 +201,8 @@ def to_numerical(x, y):
 
 
 def normalize(x):
-    x = x - np.mean(x)
+    if np.mean(x) != np.nan:
+        x = x - np.mean(x)
     if np.std(x) > 0:
         x = x/np.std(x)
     return x
@@ -200,7 +219,7 @@ def normalized_entropy_baseline(x):
     hx += psi(len(delta))
     hx -= psi(1)
     return hx
-
+    
 
 def normalized_entropy(x, m=2):
     x = normalize(x)
@@ -369,7 +388,10 @@ def conditional_distribution_similarity(x, y, ffactor=2, maxdev=3, minc=12):
             #     pyxa = np.array([cyx[i] for i in yrange], dtype=float)
             #     pyxa.sort()
             if count_unique(y) > len_discretized_values(y, ffactor, maxdev):
-                yx = (yx - np.mean(yx))/np.std(y)
+                if np.mean(yx) == np.nan:
+                    yx = yx/np.std(y)
+                else:
+                    yx = (yx - np.mean(yx))/np.std(y)
                 yx = discretized_sequence(yx, ffactor, maxdev, norm=False)
                 cyx = Counter(yx.astype(int))
                 pyxa = np.array([cyx[i] for i in discretized_values(y, ffactor, maxdev)], dtype=float)
@@ -394,6 +416,8 @@ def correlation(x, y):
     x = normalize(x)
     y = normalize(y)
     r = pearsonr(x, y)[0]
+    if r == np.nan:
+        r = 0
     return r
 
 

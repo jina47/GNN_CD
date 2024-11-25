@@ -62,7 +62,7 @@ def FastHsicTestGamma(X, Y, sig=[-1,-1], maxpnt = 200):
 
     m = X.shape[0]
     if m>maxpnt:
-        indx = np.floor(np.r_[0:m:float(m-1)/(maxpnt-1)]).astype(int);
+        indx = np.floor(np.r_[0:m:float(m-1)/(maxpnt-1)]).astype(int)
 #       indx = np.r_[0:maxpnt]
         Xm = X[indx].astype(float)
         Ym = Y[indx].astype(float)
@@ -73,13 +73,13 @@ def FastHsicTestGamma(X, Y, sig=[-1,-1], maxpnt = 200):
 
     H = np.eye(m) - 1.0/m*np.ones((m,m))
 
-    K = rbf_dot(Xm,sig[0]);
-    L = rbf_dot(Ym,sig[1]);
+    K = rbf_dot(Xm,sig[0])
+    L = rbf_dot(Ym,sig[1])
     
-    Kc = np.dot(H, np.dot(K, H)); 
-    Lc = np.dot(H, np.dot(L, H));
+    Kc = np.dot(H, np.dot(K, H))
+    Lc = np.dot(H, np.dot(L, H))
     
-    testStat = (1.0/m)*(Kc.T*Lc).sum();
+    testStat = (1.0/m)*(Kc.T*Lc).sum()
     if ~np.isfinite(testStat):
         testStat = 0
         

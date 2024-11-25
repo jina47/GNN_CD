@@ -5,6 +5,13 @@ from torch_geometric.data import Data
 import feature_extract as fe
 import features as ft
 import os
+import torch.multiprocessing as mp
+import pickle
+import argparse
+from tqdm import tqdm
+
+
+# device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 
 def create_data(x_path, adj_path):
@@ -13,8 +20,10 @@ def create_data(x_path, adj_path):
     num_nodes = true_adj.size(0)
 
     x_pd = pd.read_csv(x_path)
-    node_features = torch.from_numpy(fe.extract_node_features(x_pd))
-    edge_features = torch.from_numpy(fe.extract_edge_features(x_pd))
+    # node_features = torch.from_numpy(fe.extract_node_features(x_pd))
+    # edge_features = torch.from_numpy(fe.extract_edge_features(x_pd))
+    node_features = torch.from_numpy(np.nan_to_num(fe.extract_node_features(x_pd), nan=0.0))
+    edge_features = torch.from_numpy(np.nan_to_num(fe.extract_edge_features(x_pd), nan=0.0))
 
     edge_index = torch.combinations(torch.arange(num_nodes), r=2).t()
     edge_exist = torch.nonzero(true_adj, as_tuple=False).t().contiguous()
@@ -44,3 +53,20 @@ def create_dataset(dir_path):
 
     return data_list
     
+
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument('--source', type=str, default = '/home/jina/reprod/data/triple')
+    parser.add_argument('--save_dir', type=str, default = '/home/jina/reprod/data/pickle')
+    parser.add_argument('--pkl_name', type=str)
+    
+    args = parser.parse_args()
+
+    train_data = create_dataset(args.source)
+    pkl_path = os.path.join(args.save_dir, args.pkl_name)
+    with open(pkl_path, 'wb') as f:
+        pickle.dump(train_data, f)
+
+

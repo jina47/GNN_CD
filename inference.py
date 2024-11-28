@@ -1,95 +1,101 @@
 import torch
-import torch.nn as nn
-from torch_geometric.loader import DataLoader
-import dataset
-from model import GraphSAGE
-import pickle
-import os
+from sklearn.metrics import f1_score
+import copy
 
 
-valid_path = '/home/jina/reprod/data/valid'
-batch_size = 32
-epochs = 100
-num_layers = 3
-lr = 0.001
-pk = os.path.join(valid_path, 'valid_1.pkl')
-
-if pk == None:
-    valid_data = dataset.create_dataset(valid_path)
-    with open('train_pickle.pkl', 'wb') as f:
-        pickle.dump(valid_data, f)
-else:
-    with open(pk, 'rb') as f:
-        valid_data = pickle.load(f)
-
-valid_loader = DataLoader(valid_data, batch_size=batch_size, shuffle=True)
-
-node_dim = valid_data[0].x.size(1)
-edge_dim = valid_data[0].edge_attr.size(1)
-
-device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-# model = GraphSAGE(node_dim, edge_dim, num_layers=num_layers).to(device)
-# model load 해오기
-model = 
-
-optimizer = torch.optim.Adam(model.parameters(), lr=lr)
-criterion = nn.CrossEntropyLoss() 
-
-model.train()
-
-for epoch in range(epochs):
+def predict_test(model, test_loader, criterion, device, threshold, mode='valid'):
+    model.eval()
     running_loss = 0
     running_acc = 0
     total_samples = 0
+    test_predictions = []
+    test_labels = []
+    test_data = []
 
-    for data in valid_loader:
-        # node_dim = data.x.size(1)
-        # edge_dim = data.edge_attr.size(1)
-        # # print(node_dim, edge_dim)
-        # model = GraphSAGE(node_dim, edge_dim, num_layers=num_layers).to(device)
-        # model.train()
-        data = data.to(device)
-        
-        data.x = data.x.float()
-        data.y = data.y.long()
+    with torch.no_grad():
+        for i, data in enumerate(test_loader):
+            data.x = data.x.float()
+            data = data.to(device)
 
-        optimizer.zero_grad()
-        logits = model(data)
-        loss = criterion(logits, data.y)
-        _, preds = torch.max(logits, 1)
+            logits = model(data.x, data.edge_index, data.edge_attr, data.num_nodes)
+            preds = (torch.sigmoid(logits) > threshold).float()
+            if mode == 'test':
+                data.pred = preds.view(-1)
+                test_data.append(data)
+            
+            data.y = data.y.long()
+            data.y[data.y == 2] = 1  # Convert label 2 to 1
+            loss = criterion(logits, data.y.view(-1, 1).float())
 
-        loss.backward()
-        optimizer.step()
+            test_predictions.extend(preds.cpu().numpy())
+            test_labels.extend(data.y.cpu().numpy())
 
-        running_loss += loss.item() * data.y.size(0)
-        # print(torch.sum(preds == data.y), data.y.size(0))
-        running_acc += torch.sum(preds == data.y).item()
-        total_samples += data.y.size(0)
+            running_loss += loss.item() * data.y.size(0)
+            running_acc += torch.sum(preds.squeeze() == data.y).item()
+            total_samples += data.y.size(0)
 
     epoch_loss = running_loss / total_samples
     epoch_acc = running_acc / total_samples
-    print(f'epoch: {epoch+1}, Train loss: {epoch_loss:.3f}, acc: {epoch_acc:.3f}')
+    epoch_f1 = f1_score(test_labels, test_predictions, average="binary")
+
+    if mode == 'test':
+        return epoch_loss, epoch_acc, epoch_f1, test_predictions, test_labels, test_data
+    else:
+        return epoch_loss, epoch_acc, epoch_f1, test_predictions, test_labels
 
 
-@torch.no_grad()
-def evaluate(loader):
+def orient_test(model, test_loader, criterion, device, threshold, mode='valid'):
     model.eval()
-    # evaluator = Evaluator(name='ogbg-molhiv')
-    y_true, y_pred = [], []
+    running_loss = 0
+    running_acc = 0
+    total_samples = 0
+    
+    orient_predictions = []
+    orient_labels = []
+    test_predictions = []
+    test_labels = []
 
-    for data in loader:
-        data = data.to(device)
+    with torch.no_grad():
+        for i, data in enumerate(test_loader):
+            data.x = data.x.float()
+            data.y = data.y.long()
+            data = data.to(device)
 
-        # 입력 데이터의 타입을 float으로 변환
-        data.x = data.x.float()
-        data.y = data.y.float()
+            original_edge_index = copy.deepcopy(data.edge_index)
+            original_y = copy.deepcopy(data.y)
+            
+            if mode == 'test':
+                mask = data.pred == 1
+            else:
+                mask = data.y != 0
+            filtered_edge_index = data.edge_index[:, mask]
+            filtered_y = original_y[mask]
+            filtered_y[filtered_y==2] = 0 # 2 label을 0로 변경 
+            
+            # data = data.to(device)
 
-        out = model(data.x, data.edge_index, data.batch)
-        y_true.append(data.y.view(out.shape).cpu())
-        y_pred.append(out.cpu())
+            logits = model(data.x, filtered_edge_index, data.edge_attr[mask], data.num_nodes)
+            preds = (torch.sigmoid(logits) > threshold).float()
+            # test_data[i].pred = preds.view(-1)
+            loss = criterion(logits, filtered_y.view(-1, 1).float())
 
-    y_true = torch.cat(y_true, dim=0)
-    y_pred = torch.cat(y_pred, dim=0)
+            orient_predictions.extend(preds.cpu().numpy())
+            orient_labels.extend(filtered_y.cpu().numpy())
+            
+            preds = preds.view(-1)
+            preds[preds==0] = 2 # 다시 되돌리기
+            # data.pred[mask] = preds
+            original_y[mask] = preds.long()
+            # test_predictions.extend(data.pred.cpu().numpy())
+            test_predictions.extend(original_y.cpu().numpy())
+            test_labels.extend(data.y.cpu().numpy())
 
-    input_dict = {"y_true": y_true, "y_pred": y_pred}
-    return evaluator.eval(input_dict)['rocauc']
+            running_loss += loss.item() * filtered_y.size(0)
+            running_acc += torch.sum(preds.squeeze() == filtered_y).item()
+            total_samples += filtered_y.size(0)
+
+    epoch_loss = running_loss / total_samples
+    epoch_acc = running_acc / total_samples
+    epoch_f1 = f1_score(orient_labels, orient_predictions, average="binary")
+
+    return epoch_loss, epoch_acc, epoch_f1, orient_predictions, orient_labels

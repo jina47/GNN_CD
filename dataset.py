@@ -11,9 +11,6 @@ import argparse
 from tqdm import tqdm
 
 
-# device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-
-
 def create_data(x_path, adj_path):
     adj_array = np.loadtxt(adj_path, delimiter=',')
     true_adj = torch.from_numpy(adj_array)
@@ -40,7 +37,7 @@ def create_data(x_path, adj_path):
 
 def create_dataset(dir_path):
     data_list = []
-    for folder in os.listdir(dir_path):
+    for folder in tqdm(os.listdir(dir_path)):
         folder_path = os.path.join(dir_path, folder)
         if os.path.isdir(folder_path):
             for file in os.listdir(folder_path):
@@ -58,7 +55,7 @@ def create_dataset(dir_path):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('--source', type=str, default = '/home/jina/reprod/data/triple')
+    parser.add_argument('--source', type=str, default = '/home/jina/reprod/data/ten_test')
     parser.add_argument('--save_dir', type=str, default = '/home/jina/reprod/data/pickle')
     parser.add_argument('--pkl_name', type=str)
     

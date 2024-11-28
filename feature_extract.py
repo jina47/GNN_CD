@@ -141,147 +141,11 @@ edge_features = [
 ]
 
 
-# edge_features = [
-#     ('Sub_Numerical', PairColumnTransform(operator.sub), None),
-#     ('Sub_Normalized Entropy Baseline', PairColumnTransform(operator.sub), SimpleTransform(ft.normalized_entropy_baseline)),
-#     ('Sub_Normalized Entropy', PairColumnTransform(operator.sub), SimpleTransform(ft.normalized_entropy)),
-#     ('IGCI', PairColumnTransform(ft.igci), None),
-#     ('Sub_Uniform Divergence', PairColumnTransform(operator.sub), SimpleTransform(ft.uniform_divergence)),
-#     ('Polyfit', PairColumnTransform(ft.fit), None),
-#     ('Polyfit Error', PairColumnTransform(ft.fit_error), None),
-#     # ('Normalized Error Probability', PairColumnTransform(ft.normalized_error_probability), None),
-#     ('Conditional Distribution Entropy Variance', PairColumnTransform(ft.fit_noise_entropy), None),
-#     ('Conditional Distribution Skewness Variance', PairColumnTransform(ft.fit_noise_skewness), None),
-#     ('Conditional Distribution Kurtosis Variance', PairColumnTransform(ft.fit_noise_kurtosis), None),
-#     ('Conditional Distribution Similarity', PairColumnTransform(ft.conditional_distribution_similarity), None),
-#     ('Moment21', PairColumnTransform(ft.moment21), None),
-#     ('Moment22', PairColumnTransform(ft.moment22), None),
-#     ('Moment31', PairColumnTransform(ft.moment31), None),
-#     ('Sub_Skewness', PairColumnTransform(operator.sub), SimpleTransform(ft.normalized_skewness)),
-#     ('Sub_Skewness', PairColumnTransform(operator.sub), SimpleTransform(ft.normalized_kurtosis)),
-
-# ]
-
-# all_features = [
-#     ('Numerical', SimpleTransform(ft.numerical)),
-#     ('Sub_Numerical', MultiColumnTransform(operator.sub)),
-#     ('Abs_Sub_Numerical', SimpleTransform(abs)), # edge
-    
-#     ('Normalized Entropy Baseline', MultiColumnTransform(ft.normalized_entropy_baseline)),
-#     ('Max_Normalized Entropy Baseline', MultiColumnTransform(max)), # edge
-#     ('Min_Normalized Entropy Baseline', MultiColumnTransform(min)), # edge
-#     ('Sub_Normalized Entropy Baseline', MultiColumnTransform(operator.sub)), # edge
-#     ('Abs_Sub_Normalized Entropy Baseline', SimpleTransform(abs)), # edge
-    
-#     ('Normalized Entropy', MultiColumnTransform(ft.normalized_entropy)),
-#     ('Max_Normalized Entropy', MultiColumnTransform(max)), # edge
-#     ('Min_Normalized Entropy', MultiColumnTransform(min)), # edge
-#     ('Sub_Normalized Entropy', MultiColumnTransform(operator.sub)), # edge
-#     ('Abs_Sub_Normalized Entropy', SimpleTransform(abs)), # edge
-    
-#     ('IGCI', MultiColumnTransform(ft.igci)),
-#     ('Sub_IGCI', MultiColumnTransform(operator.sub)), # edge
-#     ('Abs_IGCI', SimpleTransform(abs)), # edge
-    
-#     ('Uniform Divergence', MultiColumnTransform(ft.uniform_divergence)),
-#     ('Max_Uniform Divergence', MultiColumnTransform(max)), # edge
-#     ('Min_Uniform Divergence', MultiColumnTransform(min)), # edge
-#     ('Sub_Uniform Divergence', MultiColumnTransform(operator.sub)), # edge
-#     ('Abs_Sub_Uniform Divergence', SimpleTransform(abs)), # edge
-    
-#     ('Discrete Entropy', MultiColumnTransform(ft.discrete_entropy)),
-#     ('Max_Discrete Entropy', MultiColumnTransform(max)), # edge
-#     ('Min_Discrete Entropy', MultiColumnTransform(min)), # edge
-#     ('Sub_Discrete Entropy', MultiColumnTransform(operator.sub)), # edge
-#     ('Abs_Sub_Discrete Entropy', SimpleTransform(abs)), # edge
-    
-#     ('Normalized Discrete Entropy', MultiColumnTransform(ft.normalized_discrete_entropy)),
-#     ('Max_Normalized Discrete Entropy', MultiColumnTransform(max)),
-#     ('Min_Normalized Discrete Entropy', MultiColumnTransform(min)),
-#     ('Sub_Normalized Discrete Entropy', MultiColumnTransform(operator.sub)),
-#     ('Abs_Sub_Normalized Discrete Entropy', SimpleTransform(abs)),
-    
-#     ('Discrete Joint Entropy', MultiColumnTransform(ft.discrete_joint_entropy)),
-#     ('Normalized Discrete Joint Entropy', MultiColumnTransform(ft.normalized_discrete_joint_entropy)),
-#     ('Discrete Conditional Entropy', MultiColumnTransform(ft.discrete_conditional_entropy)),
-#     ('Discrete Mutual Information', MultiColumnTransform(ft.discrete_mutual_information)),
-#     ('Normalized Discrete Mutual Information', ['Discrete Mutual Information[A,A type,B,B type]','Min[Discrete Entropy[A,A type],Discrete Entropy[B,B type]]'], MultiColumnTransform(operator.truediv)),
-#     ('Normalized Discrete Mutual Information', ['Discrete Mutual Information[A,A type,B,B type]','Discrete Joint Entropy[A,A type,B,B type]'], MultiColumnTransform(operator.truediv)),
-#     ('Adjusted Mutual Information', ['A','A type','B','B type'], MultiColumnTransform(ft.adjusted_mutual_information)),
-
-#     ('Polyfit', MultiColumnTransform(ft.fit)),
-#     ('Sub_Polyfit', MultiColumnTransform(operator.sub)),
-#     ('Abs_Sub_Polyfit', SimpleTransform(abs)),
-
-#     ('Polyfit Error', MultiColumnTransform(ft.fit_error)),
-#     ('Sub_Polyfit Error', MultiColumnTransform(operator.sub)),
-#     ('Abs_Sub_Polyfit Error', SimpleTransform(abs)),
-
-#     ('Normalized Error Probability', MultiColumnTransform(ft.normalized_error_probability)),
-#     ('Sub_Normalized Error Probability', MultiColumnTransform(operator.sub)),
-#     ('Abs_Sub_Normalized Error Probability', SimpleTransform(abs)),
-
-#     ('Conditional Distribution Entropy Variance', MultiColumnTransform(ft.fit_noise_entropy)),
-#     ('Sub_Conditional Distribution Entropy Variance', MultiColumnTransform(operator.sub)),
-#     ('Abs_Sub_Conditional Distribution Entropy Variance', SimpleTransform(abs)),
-
-#     ('Conditional Distribution Skewness Variance', MultiColumnTransform(ft.fit_noise_skewness)),
-#     ('Sub_Conditional Distribution Skewness Variance', MultiColumnTransform(operator.sub)),
-#     ('Abs_Sub_Conditional Distribution Skewness Variance', SimpleTransform(abs)),
-
-#     ('Conditional Distribution Kurtosis Variance', MultiColumnTransform(ft.fit_noise_kurtosis)),
-#     ('Sub_Conditional Distribution Kurtosis Variance', MultiColumnTransform(operator.sub)),
-#     ('Abs_Conditional Distribution Kurtosis Variance', SimpleTransform(abs)),
-
-#     ('Conditional Distribution Similarity', MultiColumnTransform(ft.conditional_distribution_similarity)),
-#     ('Sub_Conditional Distribution Similarity', MultiColumnTransform(operator.sub)),
-#     ('Abs', SimpleTransform(abs)),
-
-#     ('Moment21', MultiColumnTransform(ft.moment21)),
-#     ('Sub_Moment21', MultiColumnTransform(operator.sub)),
-#     ('Abs_Sub_Moment21', SimpleTransform(abs)),
-    
-#     ('Abs', 'Moment21[A,A type,B,B type]', SimpleTransform(abs)),
-#     ('Abs', 'Moment21[B,B type,A,A type]', SimpleTransform(abs)),
-#     ('Sub', ['Abs[Moment21[A,A type,B,B type]]','Abs[Moment21[B,B type,A,A type]]'], MultiColumnTransform(operator.sub)),
-#     ('Abs', 'Sub[Abs[Moment21[A,A type,B,B type]],Abs[Moment21[B,B type,A,A type]]]', SimpleTransform(abs)),
-    
-#     ('Moment31', MultiColumnTransform(ft.moment31)),
-#     ('Sub_Moment31', MultiColumnTransform(operator.sub)),
-#     ('Abs_sub_Moment31',SimpleTransform(abs)),
-
-#     ('Abs','Moment31[A,A type,B,B type]', SimpleTransform(abs)),
-#     ('Sub', ['Abs[Moment31[A,A type,B,B type]]','Abs[Moment31[B,B type,A,A type]]'], MultiColumnTransform(operator.sub)),
-#     ('Abs','Sub[Abs[Moment31[A,A type,B,B type]],Abs[Moment31[B,B type,A,A type]]]', SimpleTransform(abs)),
-
-#     ('Skewness', MultiColumnTransform(ft.normalized_skewness)),
-#     ('Sub_Skewness', MultiColumnTransform(operator.sub)),
-#     ('Abs_Sub_Skewness', SimpleTransform(abs)),
-    
-#     ('Abs', 'Skewness[A,A type]', SimpleTransform(abs)),
-#     ('Max', ['Abs[Skewness[A,A type]]','Abs[Skewness[B,B type]]'], MultiColumnTransform(max)),
-#     ('Min', ['Abs[Skewness[A,A type]]','Abs[Skewness[B,B type]]'], MultiColumnTransform(min)),
-#     ('Sub', ['Abs[Skewness[A,A type]]','Abs[Skewness[B,B type]]'], MultiColumnTransform(operator.sub)),
-#     ('Abs', 'Sub[Abs[Skewness[A,A type]],Abs[Skewness[B,B type]]]', SimpleTransform(abs)),
-    
-#     ('Kurtosis', MultiColumnTransform(ft.normalized_kurtosis)),
-#     ('Max_Kurtosis', MultiColumnTransform(max)),
-#     ('Min_Kurtosis', MultiColumnTransform(min)),
-#     ('Sub_Kurtosis', MultiColumnTransform(operator.sub)),
-#     ('Abs_Sub_Kurtosis', SimpleTransform(abs)),
-
-#     ('HSIC', MultiColumnTransform(ft.normalized_hsic)),
-#     ('Pearson R', MultiColumnTransform(ft.correlation)),
-#     ('Abs_Pearson R', SimpleTransform(abs))
-#     ]
-
-
-
 
 def calculate_method(args):
-    obj = args[0] # Transform
-    name = args[1] # function - fit_transform
-    margs = args[2] # (X[column_names], y)
+    obj = args[0] 
+    name = args[1] 
+    margs = args[2] 
     method = getattr(obj, name)
     return method(*margs)
 
@@ -292,37 +156,7 @@ def extract_node_features(X, features=node_features, y=None, n_jobs=-1):
         pmap = pool.map
     else:
         pmap = map
-        
-    # def complete_feature_name(feature_name, column_names):
-    #     if type(column_names) is list:
-    #         long_feature_name = feature_name + '[' + ','.join(column_names) + ']'
-    #     else:
-    #         long_feature_name = feature_name + '[' + column_names + ']'
-    #     if feature_name[0] == '+':
-    #         long_feature_name = long_feature_name[1:]
-    #     return long_feature_name
-    
-    # def is_in_X(column_names):
-    #     if type(column_names) is list:
-    #         return set(column_names).issubset(X.columns)
-    #     else:
-    #         return column_names in X.columns
-        
-    # def can_be_extracted(feature_name, column_names):
-    #     long_feature_name = complete_feature_name(feature_name, column_names)
-    #     to_be_extracted = ((feature_name[0] == '+') or (long_feature_name not in X.columns))
-    #     return to_be_extracted and is_in_X(column_names)
 
-    # while True:
-    #     new_features_list = [(complete_feature_name(feature_name, column_names), column_names, extractor) 
-    #         for feature_name, column_names, extractor in features if can_be_extracted(feature_name, column_names)]
-    #     if not new_features_list:
-    #         break
-    #     task = [(extractor, 'fit_transform', (X[column_names], y)) for _, column_names, extractor in new_features_list]
-    #     new_features = pmap(calculate_method, task)
-    #     for (feature_name, _, _), feature in zip(new_features_list, new_features):
-    #         X[feature_name] = feature
-    
     result = []
 
     for name, extractor in features:
@@ -332,9 +166,7 @@ def extract_node_features(X, features=node_features, y=None, n_jobs=-1):
         else:
             result = np.column_stack([result, y])
 
-    # node_data = pd.DataFrame(result) # dataframe으로 고칠지 말지는 나중에 고민 바로 GNN 넣을거면 안 바꿔도 될 듯? 근데 나중에 column 명은 필요할텐데....
-    node_data = result
-    return node_data
+    return result
 
 
 def extract_edge_features(X, features=edge_features, y=None, n_jobs=-1):
@@ -343,42 +175,12 @@ def extract_edge_features(X, features=edge_features, y=None, n_jobs=-1):
         pmap = pool.map
     else:
         pmap = map
-        
-    # def complete_feature_name(feature_name, column_names):
-    #     if type(column_names) is list:
-    #         long_feature_name = feature_name + '[' + ','.join(column_names) + ']'
-    #     else:
-    #         long_feature_name = feature_name + '[' + column_names + ']'
-    #     if feature_name[0] == '+':
-    #         long_feature_name = long_feature_name[1:]
-    #     return long_feature_name
-    
-    # def is_in_X(column_names):
-    #     if type(column_names) is list:
-    #         return set(column_names).issubset(X.columns)
-    #     else:
-    #         return column_names in X.columns
-        
-    # def can_be_extracted(feature_name, column_names):
-    #     long_feature_name = complete_feature_name(feature_name, column_names)
-    #     to_be_extracted = ((feature_name[0] == '+') or (long_feature_name not in X.columns))
-    #     return to_be_extracted and is_in_X(column_names)
-
-    # while True:
-    #     new_features_list = [(complete_feature_name(feature_name, column_names), column_names, extractor) 
-    #         for feature_name, column_names, extractor in features if can_be_extracted(feature_name, column_names)]
-    #     if not new_features_list:
-    #         break
-    #     task = [(extractor, 'fit_transform', (X[column_names], y)) for _, column_names, extractor in new_features_list]
-    #     new_features = pmap(calculate_method, task)
-    #     for (feature_name, _, _), feature in zip(new_features_list, new_features):
-    #         X[feature_name] = feature
 
     nodes = [n for n in range(len(X.columns))]
-    pairs = list(itertools.combinations(nodes, 2)) # node의 컬럼인덱스 혹은 컬럼명
+    pairs = list(itertools.combinations(nodes, 2)) 
     # pairs
     result = []
-    for name, extractor, operation in features: # column 이름...... 어떻게 할지 나중에 생각
+    for name, extractor, operation in features: 
         pair_values1 = []
         pair_values2 = []
         for n1, n2 in pairs:
@@ -389,19 +191,14 @@ def extract_edge_features(X, features=edge_features, y=None, n_jobs=-1):
                 df2 = operation.transform(df2)
             m = extractor.transform(df1, df2) 
             n = extractor.transform(df2, df1) 
-            # print(m)
-            # print(n)
-            # print()
+
             y = np.mean(np.abs(m))
             z = np.mean(np.abs(n))
             pair_values1.append(y)
             pair_values2.append(z)
         result.append(pair_values1)
-        # if pair_values1 != pair_values2:
         result.append(pair_values2)
 
     result = np.array(result).T
-    # print(result.shape)
-    # edge_data = pd.DataFrame(result) # numpy로 할지 말지 다시 보기
-    edge_data = result
-    return edge_data
+
+    return result

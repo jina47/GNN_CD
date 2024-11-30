@@ -4,15 +4,8 @@ import igraph as ig
 import random
 import argparse
 import os
-import networkx as nx
-import matplotlib.pyplot as plt
-import seaborn as sns
-
-
-def set_random_seed(seed):
-    random.seed(seed)
-    np.random.seed(seed)
-
+from utils import seed_everything
+from tqdm import tqdm
 
 def is_dag(W):
     G = ig.Graph.Weighted_Adjacency(W.tolist())
@@ -114,6 +107,11 @@ def simulate_linear_sem(W, n, sem_type, noise_scale=None):
         elif sem_type == 'poisson':
             lam = np.exp(np.clip(X @ w, a_min=None, a_max=10))
             x = np.random.poisson(lam) * 1.0
+        elif sem_type == 'gamma':
+            k = 2.5
+            scale = np.ones(d) * 2.5
+            z = np.random.gamma(shape=k, scale=scale, size=n)
+            x = X @ w + z
         else:
             raise ValueError('unknown sem type')
         return x
@@ -222,40 +220,19 @@ def generate_data(n, d, s0, graph_type, linear_sem_type, nonlinear_sem_type, typ
     if type == 'linear':
         B_true = simulate_dag(d, s0, graph_type)
         W_true = simulate_parameter(B_true)
-        noise_scale = [random.uniform(0.1, 1.0) for _ in range(B_true.shape[0])]
-        X = simulate_linear_sem(W_true, n, linear_sem_type, noise_scale)
+        # noise_scale = [random.uniform(0.1, 1.0) for _ in range(B_true.shape[0])]
+        X = simulate_linear_sem(W_true, n, linear_sem_type)
         np.savetxt(os.path.join(new_folder_path, f'B_true_{graph_type}_{linear_sem_type}.csv'), B_true, delimiter=',')
-        # 필요한지 확인..?
         np.savetxt(os.path.join(new_folder_path, f'W_true_{graph_type}_{linear_sem_type}.csv'), W_true, delimiter=',')
         np.savetxt(os.path.join(new_folder_path, f'X_{graph_type}_{linear_sem_type}.csv'), X, delimiter=',')
       
     # nonlinear sem
     else:
         B_true = simulate_dag(d, s0, graph_type)
-        noise_scale = [random.uniform(0.1, 1.0) for _ in range(B_true.shape[0])]
-        X = simulate_nonlinear_sem(B_true, n, nonlinear_sem_type, noise_scale)
+        # noise_scale = [random.uniform(0.1, 1.0) for _ in range(B_true.shape[0])]
+        X = simulate_nonlinear_sem(B_true, n, nonlinear_sem_type)
         np.savetxt(os.path.join(new_folder_path, f'B_true_{graph_type}_{nonlinear_sem_type}.csv'), B_true, delimiter=',')
         np.savetxt(os.path.join(new_folder_path, f'X_{graph_type}_{nonlinear_sem_type}.csv'), X, delimiter=',')
-    
-    
-def visualize_dag(csv_path):
-    adj_matrix = np.loadtxt(csv_path, delimiter=',')
-    G = nx.from_numpy_array(adj_matrix, create_using=nx.DiGraph)  
-    pos = nx.spring_layout(G, k=1.5)  
-    plt.figure(figsize=(5, 5))
-    nx.draw(G, pos, with_labels=True, node_color='lightblue', edge_color='gray', node_size=1000, arrows=True)
-    plt.title("DAG Visualization")
-    plt.show()
-
-
-def visualize_matrix(csv_path):
-    adj_matrix = np.loadtxt(csv_path, delimiter=',')
-    plt.figure(figsize=(5, 5))
-    sns.heatmap(adj_matrix, annot=True, cmap='Blues', cbar=False)
-    plt.gca().xaxis.set_label_position('top') 
-    plt.gca().xaxis.tick_top()  
-    plt.title('Adjacency Matrix Visualization')
-    plt.show()
 
 
 
@@ -263,35 +240,21 @@ def visualize_matrix(csv_path):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('--save_dir', type=str, default = '/home/jina/reprod/data/train')
-    parser.add_argument('--num_graph', type=int, default = 200)
+    parser.add_argument('--save_dir', type=str, default = '/home/jina/reprod/report/data/two/ER/uni/edge1')
+    parser.add_argument('--num_graph', type=int, default = 2000)
     parser.add_argument('--graph_type', type=str, default = 'ER')
+    parser.add_argument('--sem_type', type=str, default = 'linear')
+    parser.add_argument('--linear_sem_type', type=str, default = 'uniform')
+    parser.add_argument('--nonlinear_sem_type', type=str, default = 'mlp')
+    parser.add_argument('--n', type=int, default = 1000)
+    parser.add_argument('--d', type=int, default = 2)
+    parser.add_argument('--s0', type=int, default = 1)
 
     args = parser.parse_args()
 
-    num_graph = args.num_graph
-
-    n_list = [500, 1000, 2000]
-    d_list = [10, 20, 50, 100]
-    # s0_list = [1, 2, 4]
-    graph_list = ['ER', 'SF']
-    type_list = ['linear', 'nonlinear']
-    linear_type = ['gauss', 'exp', 'gumbel', 'uniform', 'logistic', 'poisson']
-    nonlinear_sem_type = 'mlp'
-    linear_sem_type = 'exp'
-
-    for _ in range(num_graph):
+    for _ in tqdm(range(args.num_graph)):
         seed = random.randint(0, 10000)
-        set_random_seed(seed)
+        seed_everything(seed)
 
-        n = random.choice(n_list)
-        d = random.choice(d_list)
-        max_edge = d * (d-1) // 2
-        s0 = int(max_edge * random.uniform(0.3, 0.8))
-        # graph_type = random.choice(graph_list)
-        sem_type = random.choice(type_list)
-        if sem_type == 'linear':
-            linear_sem_type = random.choice(linear_type)
-
-        generate_data(n=n, d=d, s0=s0, graph_type=args.graph_type, linear_sem_type=linear_sem_type, nonlinear_sem_type=nonlinear_sem_type, type=sem_type, save_dir=args.save_dir)
+        generate_data(n=args.n, d=args.d, s0=args.s0, graph_type=args.graph_type, linear_sem_type=args.linear_sem_type, nonlinear_sem_type=args.nonlinear_sem_type, type=args.sem_type, save_dir=args.save_dir)
 

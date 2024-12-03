@@ -32,7 +32,7 @@ def predict_test(model, test_loader, criterion, device, threshold, mode='valid')
             
             loss = criterion(logits, data.y.view(-1, 1).float())
 
-            test_predictions.extend(preds.cpu().numpy())
+            test_predictions.extend(preds.view(-1).cpu().numpy())
             test_labels.extend(data.y.cpu().numpy())
 
             running_loss += loss.item() * data.y.size(0)
@@ -74,7 +74,7 @@ def orient_test(model, test_loader, criterion, device, threshold, mode='valid'):
 
             filtered_edge_attr = data.edge_attr[mask]
             filtered_edge_index = data.edge_index[:, mask]
-            filtered_y = original_y[mask]
+            filtered_y = data.y[mask]
             filtered_y[filtered_y==2] = 0 # 2 label을 0로 변경 
 
             logits = model(data.x, filtered_edge_index, filtered_edge_attr, data.num_nodes)
@@ -91,10 +91,15 @@ def orient_test(model, test_loader, criterion, device, threshold, mode='valid'):
             preds = preds.view(-1)
             preds[preds==0] = 2 # 다시 되돌리기
 
-            original_y[mask] = preds.long()
+            if mode == 'total':
+                data.pred[mask] = preds.float()
+                final_predictions.extend(data.pred.cpu().numpy())
+                final_labels.extend(data.y.cpu().numpy())
+            else:
+                original_y[mask] = preds.long()
+                final_predictions.extend(original_y.cpu().numpy())
+                final_labels.extend(data.y.cpu().numpy())
 
-            final_predictions.extend(original_y.cpu().numpy())
-            final_labels.extend(data.y.cpu().numpy())
 
     if mode == 'valid':
         epoch_loss = running_loss / total_samples

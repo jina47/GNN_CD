@@ -60,3 +60,28 @@ def aggregate_data(data_files, pkl_name, save_dir='/home/jina/reprod/report/data
     pkl_path = os.path.join(save_dir, pkl_name)
     with open(pkl_path, 'wb') as f:
         pickle.dump(data, f)
+
+
+def is_data_duplicate(data1, data2):
+    if not torch.equal(data1.x, data2.x):
+        return False
+    if not torch.equal(data1.edge_attr, data2.edge_attr):
+        return False
+    return True
+
+
+def find_duplicates(train_data, valid_data):
+    duplicates = []
+    for train_idx, train_item in enumerate(train_data):
+        for valid_idx, valid_item in enumerate(valid_data):
+            if is_data_duplicate(train_item, valid_item):
+                duplicates.append((train_idx, valid_idx))
+    return duplicates
+
+
+def remove_duplicates_from_valid(train_data, valid_data):
+    duplicates = find_duplicates(train_data, valid_data)
+    valid_indices_to_remove = {valid_idx for _, valid_idx in duplicates}
+    filtered_valid_data = [valid_item for idx, valid_item in enumerate(valid_data) if idx not in valid_indices_to_remove]
+    
+    return filtered_valid_data

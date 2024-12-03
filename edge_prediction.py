@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 from torch_geometric.loader import DataLoader
 from sklearn.metrics import confusion_matrix
-from model import customGraphSAGE
+from model import customGraphSAGE, onlyMLP
 from train import predict_train
 from inference import predict_test
 import wandb
@@ -15,9 +15,9 @@ import random
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('--train_pkl', type=str, default = '/home/jina/reprod/data/pickle/five3')
+    parser.add_argument('--train_pkl', type=str, default = '/home/jina/reprod/report/test/train_dataset/five_ER_exp_mlp_uni')
     parser.add_argument('--valid_pkl', type=str, default = None)
-    parser.add_argument('--test_pkl', type=str, default = '/home/jina/reprod/report/data/pickle/five_ER_exp_edge5')
+    parser.add_argument('--test_pkl', type=str, default = '/home/jina/reprod/report/test/test_dataset/five_ER_exp_mlp_uni_5')
     # parser.add_argument('--test_pkl', type=str, default = None)
 
     parser.add_argument('--batch_size', type=int, default = 32)
@@ -27,7 +27,7 @@ if __name__ == '__main__':
     parser.add_argument('--threshold', type=float, default = 0.5)
     parser.add_argument('--seed', type=int, default = 11)
 
-    parser.add_argument('--device', type=str, default = 'cpu')
+    parser.add_argument('--device', type=str, default = 'gpu')
 
     args = parser.parse_args()
 
@@ -99,7 +99,8 @@ if __name__ == '__main__':
     edge_dim = train_data[0].edge_attr.size(1)
 
     # model, optimizer, scheduler, loss
-    skeleton_model = customGraphSAGE(node_dim, edge_dim, num_layers=num_layers, output_class=2, device=device, num_samples=None).to(device)
+    # skeleton_model = customGraphSAGE(node_dim, edge_dim, num_layers=num_layers, output_class=2, device=device, num_samples=None).to(device)
+    skeleton_model = onlyMLP(node_dim, edge_dim, num_layers=num_layers, output_class=2, device=device, num_samples=None).to(device)
     optimizer = torch.optim.Adam(skeleton_model.parameters(), lr=lr)
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=5)
     criterion = nn.BCEWithLogitsLoss()
@@ -154,7 +155,7 @@ if __name__ == '__main__':
 
     acc_ = f'{best_valid_acc:.5f}'[2:]
     file_name = f'{wandb_name.split("&")[0]}_{acc_}.pth'
-    save_model(best_model, mode='prediction', file_name=file_name)
+    save_model(best_model, mode='prediction', file_name=file_name, saved_dir='/home/jina/reprod/baseline/mlp/models')
 
     wandb.log({
         "best_valid_accuracy": best_valid_acc,

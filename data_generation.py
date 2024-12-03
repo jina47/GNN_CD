@@ -1,11 +1,10 @@
 import numpy as np
 from scipy.special import expit as sigmoid
 import igraph as ig
-import random
 import argparse
 import os
-from utils import seed_everything
 from tqdm import tqdm
+from utils import seed_everything
 
 def is_dag(W):
     G = ig.Graph.Weighted_Adjacency(W.tolist())
@@ -36,8 +35,8 @@ def simulate_dag(d, s0, graph_type):
 
     if graph_type == 'ER':
         # Erdos-Renyi
-        # G_und = ig.Graph.Erdos_Renyi(n=d, m=s0)
-        G_und = ig.Graph.Erdos_Renyi(n=d, p=0.5)
+        G_und = ig.Graph.Erdos_Renyi(n=d, m=s0)
+        # G_und = ig.Graph.Erdos_Renyi(n=d, p=0.5)
         B_und = _graph_to_adjmat(G_und)
         B = _random_acyclic_orientation(B_und)
     elif graph_type == 'SF':
@@ -252,9 +251,8 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
-    for _ in tqdm(range(args.num_graph)):
-        seed = random.randint(0, 10000)
+    for i in tqdm(range(args.num_graph)):
+        seed = i + 10002
         seed_everything(seed)
-
         generate_data(n=args.n, d=args.d, s0=args.s0, graph_type=args.graph_type, linear_sem_type=args.linear_sem_type, nonlinear_sem_type=args.nonlinear_sem_type, type=args.sem_type, save_dir=args.save_dir)
 

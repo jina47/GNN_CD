@@ -7,3 +7,5 @@ trash.py
 *.sh
 /models/*
 /report/*
+*.pth
+*.txt

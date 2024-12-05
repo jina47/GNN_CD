@@ -99,8 +99,8 @@ if __name__ == '__main__':
     edge_dim = train_data[0].edge_attr.size(1)
 
     # model, optimizer, scheduler, loss
-    # skeleton_model = customGraphSAGE(node_dim, edge_dim, num_layers=num_layers, output_class=2, device=device, num_samples=None).to(device)
-    skeleton_model = onlyMLP(node_dim, edge_dim, num_layers=num_layers, output_class=2, device=device, num_samples=None).to(device)
+    skeleton_model = customGraphSAGE(node_dim, edge_dim, num_layers=num_layers, output_class=2, device=device, num_samples=None).to(device)
+    # skeleton_model = onlyMLP(node_dim, edge_dim, num_layers=num_layers, output_class=2, device=device, num_samples=None).to(device)
     optimizer = torch.optim.Adam(skeleton_model.parameters(), lr=lr)
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=5)
     criterion = nn.BCEWithLogitsLoss()

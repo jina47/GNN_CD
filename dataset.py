@@ -56,7 +56,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
 
     parser.add_argument('--source', type=str, default = '/home/jina/reprod/report/data/two/ER/mlp/edge1')
-    parser.add_argument('--save_dir', type=str, default = '/home/jina/reprod/report/data/pickle')
+    parser.add_argument('--save_dir', type=str, default = '/home/jina/reprod/report/train_data/pickle')
     parser.add_argument('--pkl_name', type=str)
     
     args = parser.parse_args()

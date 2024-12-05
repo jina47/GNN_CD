@@ -106,4 +106,46 @@ def orient_test(model, test_loader, criterion, device, threshold, mode='valid'):
     epoch_acc = accuracy_score(orient_labels, orient_predictions)
     epoch_f1 = f1_score(orient_labels, orient_predictions, average="binary")
 
-    return epoch_loss, epoch_acc, epoch_f1, orient_predictions, orient_labels, final_predictions, final_labels
+    if mode == 'orientation':
+        
+        return epoch_loss, epoch_acc, epoch_f1, original_y.cpu().numpy(), data.y.cpu().numpy(), final_predictions, final_labels
+    else:
+        return epoch_loss, epoch_acc, epoch_f1, orient_predictions, orient_labels, final_predictions, final_labels
+
+
+
+def three_test(model, test_loader, criterion, device, threshold, mode='valid'):
+    model.eval()
+    running_loss = 0
+    total_samples = 0
+
+    test_predictions = []
+    test_labels = []
+    
+
+    with torch.no_grad():
+        for data in test_loader:
+            data.x = data.x.float()
+            data = data.to(device)
+
+            logits = model(data.x, data.edge_index, data.edge_attr, data.num_nodes)
+            
+            # 각 클래스에 대한 확률을 얻고, 가장 높은 확률의 클래스를 예측으로 선택
+            preds = torch.argmax(logits, dim=1)
+            
+            data.y = data.y.long()
+            
+            # CrossEntropyLoss는 로짓을 그대로 사용
+            loss = criterion(logits, data.y)
+
+            test_predictions.extend(preds.view(-1).cpu().numpy())
+            test_labels.extend(data.y.cpu().numpy())
+
+            running_loss += loss.item() * data.y.size(0)
+            total_samples += data.y.size(0)
+
+    epoch_loss = running_loss / total_samples
+    epoch_acc = accuracy_score(test_labels, test_predictions)
+    epoch_f1 = f1_score(test_labels, test_predictions, average="macro")  # 다중 클래스이므로 macro 평균 사용
+
+    return epoch_loss, epoch_acc, epoch_f1, test_predictions, test_labels

@@ -252,7 +252,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     for i in tqdm(range(args.num_graph)):
-        seed = i + 10002
+        seed = i + 20002
         seed_everything(seed)
         generate_data(n=args.n, d=args.d, s0=args.s0, graph_type=args.graph_type, linear_sem_type=args.linear_sem_type, nonlinear_sem_type=args.nonlinear_sem_type, type=args.sem_type, save_dir=args.save_dir)
 

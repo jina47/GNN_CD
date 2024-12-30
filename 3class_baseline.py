@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 from torch_geometric.loader import DataLoader
 from sklearn.metrics import confusion_matrix
-from model import MultiClass
+from model import MultiClass, baseline
 from train import three_train
 from inference import three_test
 import wandb
@@ -56,13 +56,12 @@ def get_SHD(true_edge_label, pre_edge_label):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('--train_pkl', type=str, default = '/home/jina/reprod/report/test/train_dataset/two_ER_exp_mlp_uni')
-    parser.add_argument('--valid_pkl', type=str, default = None)
-    parser.add_argument('--test_pkl', type=str, default = '/home/jina/reprod/report/test/test_dataset/two_ER_exp_mlp_uni_01')
-    # parser.add_argument('--test_pkl', type=str, default = None)
+    parser.add_argument('--train_pkl', type=str, default = '/home/jina/reprod/new_data/train_dataset/seven_ER_exp_mlp')
+    parser.add_argument('--valid_pkl', type=str, default = '/home/jina/reprod/new_data/valid_dataset/seven_ER_exp_mlp')
+    parser.add_argument('--test_pkl', type=str, default = '/home/jina/reprod/new_data/test_dataset/seven_ER_exp_mlp_11')
 
     parser.add_argument('--batch_size', type=int, default = 32)
-    parser.add_argument('--epochs', type=int, default = 50)
+    parser.add_argument('--epochs', type=int, default = 70)
     parser.add_argument('--num_layers', type=int, default = 3)
     parser.add_argument('--lr', type=float, default = 0.005)
     parser.add_argument('--threshold', type=float, default = 0.5)
@@ -99,7 +98,7 @@ if __name__ == '__main__':
 
 
     wandb.init(
-        project="3class_baseline",
+        project="final_3class",
         name = wandb_name,
         config={
             "batch_size": args.batch_size,
@@ -140,7 +139,7 @@ if __name__ == '__main__':
     edge_dim = train_data[0].edge_attr.size(1)
 
     # model, optimizer, scheduler, loss
-    threeclass_model = MultiClass(node_dim, edge_dim, num_layers=num_layers, output_class=3, device=device, num_samples=None).to(device)
+    threeclass_model = baseline(11, 100, 3).to(device)
 
     optimizer = torch.optim.Adam(threeclass_model.parameters(), lr=lr)
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=5)
@@ -193,56 +192,14 @@ if __name__ == '__main__':
 
     print(best_valid_labels)
     print(best_valid_predictions)
-    # tn, fp, fn, tp = confusion_matrix(best_valid_labels, best_valid_predictions).ravel().tolist()
-    # print(f"MultiClass Valid tn: {tn} fp: {fp} fn: {fn} tp: {tp}")
 
     acc_ = f'{best_valid_acc:.5f}'[2:]
     file_name = f'{wandb_name.split("&")[0]}_{acc_}.pth'
-    save_model(best_model, mode='', file_name=file_name, saved_dir='/home/jina/reprod/baseline/3class/models')
+    save_model(best_model, mode='', file_name=file_name, saved_dir='/home/jina/reprod/new_data/models/base')
 
     wandb.log({
         "best_valid_accuracy": best_valid_acc,
         "best_valid_f1": best_valid_f1,
-        # "final_valid_tn": tn,
-        # "final_valid_fp": fp,
-        # "final_valid_fn": fn,
-        # "final_valid_tp": tp,
     })
-
-
-    # if args.test_pkl:
-    #     # test_model = customGraphSAGE(node_dim, edge_dim, num_layers=num_layers, output_class=2, device=device, num_samples=None).to(device)
-    #     # test_model = load_model(test_model, model_path=args.pred_model, device=args.device)
-    #     acc_list = []
-    #     f1_list = []
-    #     shd_list = []
-    #     predictions_list = []
-    #     labels_list = []
-
-    #     best_model.to(device)
-
-    #     test_loader = DataLoader(test_data, batch_size=1, shuffle=False)
-    #     for data in test_loader:
-    #         test_loss, test_acc, test_f1, test_predictions, test_labels = three_test(best_model, [data], criterion, device, threshold, mode='test')
-        
-    #         shd = get_SHD(test_labels, test_predictions)
-    #         shd_list.append(shd)
-
-    #     print("\nSkeleton Test complete!")
-    #     print(f"Test F1: {test_f1:.3f}, Test Acc: {test_acc:.3f}, Test Loss: {test_loss:.3f}")
-
-    #     tn, fp, fn, tp = confusion_matrix(test_labels, test_predictions).ravel().tolist()
-    #     print(f"Skeleton Test tn: {tn} fp: {fp} fn: {fn} tp: {tp}")
-
-    #     wandb.log({
-    #     "test_loss": test_loss,
-    #     "test_accuracy": test_acc,
-    #     "test_f1": test_f1,
-    #     "test_tn": tn,
-    #     "test_fp": fp,
-    #     "test_fn": fn,
-    #     "test_tp": tp,
-    # })
-
 
     wandb.finish()

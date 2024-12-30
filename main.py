@@ -2,7 +2,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 from torch_geometric.loader import DataLoader
-from model import customGraphSAGE, onlyMLP
+from model import *
 from sklearn.metrics import accuracy_score, confusion_matrix
 from scipy.stats import sem
 from train import *
@@ -61,9 +61,11 @@ if __name__ == '__main__':
 
     parser.add_argument('--mode', type=str, default = 'orientation')
     # parser.add_argument('--test_pkl', type=str, default = '/home/jina/reprod/data/pickle/triple_test')
-    parser.add_argument('--test_pkl', type=str, default = '/home/jina/reprod/report/test/test_dataset/ten_ER_exp_mlp_uni_45')
-    parser.add_argument('--prediction_pth', type=str, default = '/home/jina/reprod/models/prediction/ten_ER_exp_mlp_uni_70389.pth')
-    parser.add_argument('--orientation_pth', type=str, default = '/home/jina/reprod/models/orientation/ten_ER_exp_mlp_uni_93482.pth')
+    parser.add_argument('--test_pkl', type=str, default = '/home/jina/reprod/new_data/test_dataset/four_ER_exp_mlp_6')
+    parser.add_argument('--prediction_pth', type=str, default = '/home/jina/reprod/new_data/models/model4/prediction/four_ER_exp_mlp_93238.pth')
+    parser.add_argument('--orientation_pth', type=str, default = '/home/jina/reprod/new_data/models/model1/orientation/four_ER_exp_mlp_95476.pth')
+    parser.add_argument('--model_ske', type=str, default = 'split')
+    parser.add_argument('--model_ori', type=str, default = 'split')
 
     parser.add_argument('--num_layers', type=int, default = 3)
     parser.add_argument('--threshold', type=float, default = 0.5)
@@ -82,7 +84,7 @@ if __name__ == '__main__':
         test_data = pickle.load(f)
 
     wandb.init(
-        project="gnn_cd",
+        project="final-final_gnn_cd",
         name = wandb_name,
         config={
             "num_layers": args.num_layers,
@@ -113,15 +115,30 @@ if __name__ == '__main__':
 
     node_dim = test_data[0].x.size(1)
     edge_dim = test_data[0].edge_attr.size(1)
+    num_node = test_data[0].num_nodes
     
 
     if args.mode != 'orientation':
         print('****** Skeleton ******')
-        # skeleton_model = onlyMLP(node_dim, edge_dim, num_layers=num_layers, output_class=2, device=device, num_samples=None).to(device)
-        skeleton_model = customGraphSAGE(node_dim, edge_dim, num_layers=num_layers, output_class=2, device=device, num_samples=None).to(device)
+        if args.model_ske == 'mlp':
+            skeleton_model = onlyMLP(node_dim, edge_dim, num_layers=num_layers, output_class=2, device=device, num_samples=None).to(device)
+        elif args.model_ske == 'model1':
+            skeleton_model = customGraphSAGE(node_dim, edge_dim, num_layers=num_layers, output_class=2, device=device, num_samples=None).to(device)
+        elif args.model_ske == 'model4':
+            skeleton_model = customGraphSAGE4(node_dim=node_dim, edge_dim=edge_dim, num_nodes=num_node, device=device).to(device)
+        elif args.model_ske == 'model5':
+            skeleton_model = customGraphSAGE5(node_dim=node_dim, edge_dim=edge_dim, num_nodes=num_node, device=device).to(device)
+        elif args.model_ske == 'split':
+            skeleton_model = splitbase(node_dim, edge_dim, num_layers=num_layers, output_class=2, device=device, num_samples=None).to(device)
+        elif args.model_ske == 'gat':
+            skeleton_model = customGAT(node_dim=node_dim, edge_dim=edge_dim, num_nodes=num_node, device=device).to(device)
+        elif args.model_ske == 'gcn':
+            skeleton_model = customGCN(node_dim=node_dim, edge_dim=edge_dim, num_nodes=num_node, device=device).to(device)
         skeleton_model = load_model(skeleton_model, model_path=args.prediction_pth, device=device)
         criterion = nn.BCEWithLogitsLoss()
         wandb.config.model = skeleton_model.__class__.__name__
+        if skeleton_model.__class__.__name__ not in ['customGraphSAGE4', 'customGraphSAGE5', 'customGAT']:
+            num_node = 0
 
         wandb.watch(skeleton_model, log="all")
         
@@ -131,19 +148,30 @@ if __name__ == '__main__':
         new_test_data_list = []
         ske_labels_list = []
         ske_predictions_list = []
+        probs_list = []
 
         for data in test_loader:
-            skeleton_loss, skeleton_acc, skeleton_f1, skeleton_predictions, skeleton_labels, new_test_data = predict_test(skeleton_model, [data], criterion, device, threshold, mode='test')
+            skeleton_loss, skeleton_acc, skeleton_f1, skeleton_probs, skeleton_predictions, skeleton_labels, new_test_data = predict_test(skeleton_model, [data], criterion, device, threshold, num_node=num_node, mode='test')
             new_test_data_list += new_test_data
             ske_labels_list.extend(skeleton_labels)
             ske_predictions_list.extend(skeleton_predictions)
-            # print(skeleton_predictions, skeleton_labels, get_SHD(skeleton_labels, skeleton_predictions))
             
             pre_acc_list.append(skeleton_acc)
             pre_f1_list.append(skeleton_f1)
             pre_shd_list.append(get_SHD(skeleton_labels, skeleton_predictions))
-            # print(skeleton_predictions, skeleton_labels)
+            probs_list.extend(skeleton_probs)
         
+        # ske_predictions_list[ske_predictions_list==2]=1
+        # auroc = roc_auc_score(ske_predictions_list, probs_list)
+        best_threshold = 0.0
+        best_acc = 0.0
+        thresholds = np.arange(0.1, 1.0, 0.05)
+        for t in thresholds:
+            t_preds = (np.array(probs_list) > t).astype(int)
+            t_acc = accuracy_score(ske_labels_list, t_preds)
+            if t_acc > best_acc:
+                best_acc = t_acc
+                best_threshold = t
         mean_f1 = np.mean(pre_f1_list)
         std_f1 = np.std(pre_f1_list)
         se_f1 = sem(pre_f1_list)
@@ -155,7 +183,7 @@ if __name__ == '__main__':
         se_shd = sem(pre_shd_list)
 
         print("\nSkeleton Test complete!")
-        print(f"Test F1: {mean_f1:.3f}, Test Acc: {mean_acc:.3f}, Test SHD: {mean_shd:.3f}")
+        print(f"Test F1: {mean_f1:.3f}, Test Acc: {mean_acc:.3f}, Test SHD: {mean_shd:.3f}, threshold:{best_threshold:.2f}")
 
         # pre_tn, pre_fp, pre_fn, pre_tp = confusion_matrix(ske_labels_list, ske_predictions_list).ravel().tolist()
         # print(f"Test tn: {pre_tn} fp: {pre_fp} fn: {pre_fn} tp: {pre_tp}")
@@ -170,6 +198,8 @@ if __name__ == '__main__':
             "skeleton_shd_mean": mean_shd,
             "skeleton_shd_std": std_shd,
             "skeleton_shd_se": se_shd,
+            "skeleton_threshold_acc": best_acc,
+            "skeleton_threshold": best_threshold,
             # "skeleton_tn": pre_tn,
             # "skeleton_fp": pre_fp,
             # "skeleton_fn": pre_fn,
@@ -179,11 +209,16 @@ if __name__ == '__main__':
     
     if args.mode != 'prediction':
         print('\n****** Orientation ******')
-        # orientation_model = onlyMLP(node_dim, edge_dim, num_layers=num_layers, output_class=2, device=device, num_samples=None).to(device)
-        orientation_model = customGraphSAGE(node_dim, edge_dim, num_layers=num_layers, output_class=2, device=device, num_samples=None).to(device)
+        if args.model_ori == 'mlp':
+            orientation_model = onlyMLP(node_dim, edge_dim, num_layers=num_layers, output_class=2, device=device, num_samples=None).to(device)
+        elif args.model_ori == 'model1':
+            orientation_model = customGraphSAGE(node_dim, edge_dim, num_layers=num_layers, output_class=2, device=device, num_samples=None).to(device)
+        elif args.model_ori == 'split':
+            orientation_model = splitbase(node_dim, edge_dim, num_layers=num_layers, output_class=2, device=device, num_samples=None).to(device)
         orientation_model = load_model(orientation_model, model_path=args.orientation_pth, device=device)
         criterion = nn.BCEWithLogitsLoss()
-        
+        # if args.mode == 'orientation':
+        wandb.config.ori_model = orientation_model.__class__.__name__
         wandb.watch(orientation_model, log="all")
 
         ori_acc_list = []
@@ -205,28 +240,23 @@ if __name__ == '__main__':
 
 
         for data in test_loader:
-            # ori_loss, ori_acc, ori_f1, ori_predictions, ori_labels, test_predictions, test_labels = orient_test(orientation_model, [data], criterion, device, threshold, mode='total')
-            ori_loss, ori_acc, ori_f1, ori_predictions, ori_labels, test_predictions, test_labels = orient_test(orientation_model, [data], criterion, device, threshold, mode=args.mode)
-            # print(ori_predictions, ori_labels)
+            ori_loss, ori_acc, ori_f1, ori_predictions, ori_labels, test_predictions, test_labels = orient_test(orientation_model, [data], criterion, device, threshold=0.5, mode=args.mode)
             ori_labels_list.extend(ori_labels)
             ori_predictions_list.extend(ori_predictions)
-            # print(data.edge_index, test_labels, test_predictions)
+
             oracle_adj_mat = get_adj_mat(data.edge_index, test_labels)
             estim_adj_mat = get_adj_mat(data.edge_index, test_predictions)
             
             ori_shd = get_SHD(test_labels, test_predictions)
             ori_shd_list.append(ori_shd)
-            # print(test_predictions, test_labels, get_SHD(test_labels, test_predictions))
 
             if args.mode == 'total':
                 tp, fp, fn, precision, recall, f1 = calculate_f1_score(oracle_adj_mat, estim_adj_mat)
                 ori_f1_list.append(f1)
                 ori_acc_list.append(accuracy_score(test_labels, test_predictions))
-                # print(test_predictions, test_labels)
+                
             elif args.mode == 'orientation':
                 if ~np.isnan(ori_acc):
-                    # ori_acc_list.append(ori_acc)
-                    # ori_f1_list.append(ori_f1)
                     tp, fp, fn, precision, recall, f1 = calculate_f1_score(oracle_adj_mat, estim_adj_mat)
                     print(tp, fp, fn, precision, recall, f1)
                     ori_acc_list.append(ori_acc)

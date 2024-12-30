@@ -1,10 +1,10 @@
 import torch
-from sklearn.metrics import f1_score, accuracy_score
+from sklearn.metrics import f1_score, accuracy_score, roc_auc_score
 import copy
 import numpy as np
 
 
-def predict_test(model, test_loader, criterion, device, threshold, mode='valid'):
+def predict_test(model, test_loader, criterion, device, threshold, num_node=0, mode='valid'):
     model.eval()
     running_loss = 0
     total_samples = 0
@@ -12,6 +12,7 @@ def predict_test(model, test_loader, criterion, device, threshold, mode='valid')
     test_predictions = []
     test_labels = []
     test_data = []
+    test_probs = []
 
     with torch.no_grad():
         for data in test_loader:
@@ -19,9 +20,12 @@ def predict_test(model, test_loader, criterion, device, threshold, mode='valid')
             data = data.to(device)
 
             original_data = copy.deepcopy(data)
-
-            logits = model(data.x, data.edge_index, data.edge_attr, data.num_nodes)
-            preds = (torch.sigmoid(logits) > threshold).float()
+            if num_node != 0:
+                logits = model(data.x, data.edge_index, data.edge_attr, data.num_nodes, num_node)
+            else:
+                logits = model(data.x, data.edge_index, data.edge_attr, data.num_nodes)
+            probs = torch.sigmoid(logits)
+            preds = (probs > threshold).float()
 
             if mode == 'test':
                 original_data.pred = preds.view(-1)
@@ -34,6 +38,7 @@ def predict_test(model, test_loader, criterion, device, threshold, mode='valid')
 
             test_predictions.extend(preds.view(-1).cpu().numpy())
             test_labels.extend(data.y.cpu().numpy())
+            test_probs.extend(probs.view(-1).cpu().numpy())  # 확률값 저장
 
             running_loss += loss.item() * data.y.size(0)
             total_samples += data.y.size(0)
@@ -41,18 +46,29 @@ def predict_test(model, test_loader, criterion, device, threshold, mode='valid')
     epoch_loss = running_loss / total_samples
     epoch_acc = accuracy_score(test_labels, test_predictions)
     epoch_f1 = f1_score(test_labels, test_predictions, average="binary")
+    thresholds = np.arange(0.1, 1.0, 0.05)
+    if mode != 'test':
+        auroc = roc_auc_score(test_labels, test_probs)
+        best_threshold = 0.0
+        best_acc = 0.0
+        for t in thresholds:
+            t_preds = (np.array(test_probs) > t).astype(int)
+            t_acc = accuracy_score(test_labels, t_preds)
+            if t_acc > best_acc:
+                best_acc = t_acc
+                best_threshold = t
 
     if mode == 'test':
-        return epoch_loss, epoch_acc, epoch_f1, test_predictions, test_labels, test_data
+        return epoch_loss, epoch_acc, epoch_f1, test_probs, test_predictions, test_labels, test_data
     else:
-        return epoch_loss, epoch_acc, epoch_f1, test_predictions, test_labels
+        return epoch_loss, epoch_acc, epoch_f1, auroc, best_threshold, test_predictions, test_labels
 
 
 def orient_test(model, test_loader, criterion, device, threshold, mode='valid'):
     model.eval()
     running_loss = 0
     total_samples = 0
-    epoch_loss = 0 # 지우기
+    epoch_loss = 0 
     
     orient_predictions = []
     orient_labels = []
@@ -130,12 +146,10 @@ def three_test(model, test_loader, criterion, device, threshold, mode='valid'):
 
             logits = model(data.x, data.edge_index, data.edge_attr, data.num_nodes)
             
-            # 각 클래스에 대한 확률을 얻고, 가장 높은 확률의 클래스를 예측으로 선택
             preds = torch.argmax(logits, dim=1)
             
             data.y = data.y.long()
             
-            # CrossEntropyLoss는 로짓을 그대로 사용
             loss = criterion(logits, data.y)
 
             test_predictions.extend(preds.view(-1).cpu().numpy())
@@ -146,6 +160,6 @@ def three_test(model, test_loader, criterion, device, threshold, mode='valid'):
 
     epoch_loss = running_loss / total_samples
     epoch_acc = accuracy_score(test_labels, test_predictions)
-    epoch_f1 = f1_score(test_labels, test_predictions, average="macro")  # 다중 클래스이므로 macro 평균 사용
+    epoch_f1 = f1_score(test_labels, test_predictions, average="macro") 
 
     return epoch_loss, epoch_acc, epoch_f1, test_predictions, test_labels

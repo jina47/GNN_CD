@@ -243,16 +243,20 @@ if __name__ == '__main__':
     parser.add_argument('--num_graph', type=int, default = 2000)
     parser.add_argument('--graph_type', type=str, default = 'ER')
     parser.add_argument('--sem_type', type=str, default = 'linear')
-    parser.add_argument('--linear_sem_type', type=str, default = 'uniform')
+    parser.add_argument('--linear_sem_type', type=str, default = 'exp')
     parser.add_argument('--nonlinear_sem_type', type=str, default = 'mlp')
     parser.add_argument('--n', type=int, default = 1000)
     parser.add_argument('--d', type=int, default = 2)
     parser.add_argument('--s0', type=int, default = 1)
+    parser.add_argument('--mode', type=str, default = 'train')
 
     args = parser.parse_args()
 
     for i in tqdm(range(args.num_graph)):
-        seed = i + 20002
+        if args.mode == 'train':
+            seed = i + 40002
+        else:
+            seed = i
         seed_everything(seed)
         generate_data(n=args.n, d=args.d, s0=args.s0, graph_type=args.graph_type, linear_sem_type=args.linear_sem_type, nonlinear_sem_type=args.nonlinear_sem_type, type=args.sem_type, save_dir=args.save_dir)
 

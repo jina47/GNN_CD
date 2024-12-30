@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 from torch_geometric.loader import DataLoader
 from sklearn.metrics import confusion_matrix
-from model import customGraphSAGE, onlyMLP
+from model import *
 from train import orient_train
 from inference import orient_test
 import wandb
@@ -15,15 +15,15 @@ import random
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('--train_pkl', type=str, default = '/home/jina/reprod/report/test/train_dataset/five_ER_exp_mlp_uni')
-    parser.add_argument('--valid_pkl', type=str, default = None)
-    parser.add_argument('--test_pkl', type=str, default = '/home/jina/reprod/report/test/test_dataset/five_ER_exp_mlp_uni_5')
-    # parser.add_argument('--test_pkl', type=str, default = None)
+    parser.add_argument('--train_pkl', type=str, default = '/home/jina/reprod/new_data/train_dataset/six_ER_exp_mlp')
+    parser.add_argument('--valid_pkl', type=str, default = '/home/jina/reprod/new_data/valid_dataset/six_ER_exp_mlp')
+    parser.add_argument('--test_pkl', type=str, default = '/home/jina/reprod/new_data/test_dataset/six_ER_exp_mlp_7')
+    parser.add_argument('--model', type=str, default = 'split')
 
     parser.add_argument('--batch_size', type=int, default = 32)
-    parser.add_argument('--epochs', type=int, default = 50)
+    parser.add_argument('--epochs', type=int, default = 70)
     parser.add_argument('--num_layers', type=int, default = 3)
-    parser.add_argument('--lr', type=float, default = 0.005)
+    parser.add_argument('--lr', type=float, default = 0.005) 
     parser.add_argument('--threshold', type=float, default = 0.5)
     parser.add_argument('--seed', type=int, default = 11)
 
@@ -59,7 +59,7 @@ if __name__ == '__main__':
     
 
     wandb.init(
-        project="edge_orientation",
+        project="final_edge_orientation",
         name = wandb_name,
         config={
             "batch_size": args.batch_size,
@@ -100,8 +100,12 @@ if __name__ == '__main__':
     edge_dim = train_data[0].edge_attr.size(1)
 
     # model, optimizer, scheduler, loss
-    # orient_model = onlyMLP(node_dim, edge_dim, num_layers=num_layers, output_class=2, device=device, num_samples=None).to(device)
-    orient_model = customGraphSAGE(node_dim, edge_dim, num_layers=num_layers, output_class=2, device=device, num_samples=None).to(device)
+    if args.model == 'mlp':
+        orient_model = onlyMLP(node_dim, edge_dim, num_layers=num_layers, output_class=2, device=device, num_samples=None).to(device)
+    elif args.model == 'model1':
+        orient_model = customGraphSAGE(node_dim, edge_dim, num_layers=num_layers, output_class=2, device=device, num_samples=None).to(device)
+    elif args.model == 'split':
+        orient_model = splitbase(node_dim, edge_dim, num_layers=num_layers, output_class=2, device=device, num_samples=None).to(device)
     optimizer = torch.optim.Adam(orient_model.parameters(), lr=lr)
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=5)
     criterion = nn.BCEWithLogitsLoss()
@@ -157,8 +161,13 @@ if __name__ == '__main__':
 
     acc_ = f'{best_valid_acc:.5f}'[2:]
     file_name = f'{wandb_name.split("&")[0]}_{acc_}.pth'
-    save_model(best_model, mode='orientation', file_name=file_name, saved_dir='/home/jina/reprod/baseline/mlp/models')
-
+    if args.model == 'mlp':
+        save_model(best_model, mode='orientation', file_name=file_name, saved_dir='/home/jina/reprod/new_data/models/mlp')
+    elif args.model == 'model1':
+        save_model(best_model, mode='orientation', file_name=file_name, saved_dir='/home/jina/reprod/new_data/models/model1')
+    elif args.model == 'split':
+        save_model(best_model, mode='orientation', file_name=file_name, saved_dir='/home/jina/reprod/new_data/models/split')
+    
     wandb.log({
         "best_valid_accuracy": best_valid_acc,
         "best_valid_f1": best_valid_f1,
@@ -170,8 +179,6 @@ if __name__ == '__main__':
 
 
     if args.test_pkl:
-        # test_model = customGraphSAGE(node_dim, edge_dim, num_layers=num_layers, output_class=2, device=device, num_samples=None).to(device)
-        # test_model = load_model(test_model, model_path=args.pred_model, device=args.device)
         best_model.to(device)
 
         test_loader = DataLoader(test_data, batch_size=1, shuffle=False)

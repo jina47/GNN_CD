@@ -1,12 +1,10 @@
 import os
-import pickle
-import random
+import csv
 import numpy as np
-import torch
-import pandas as pd
 import networkx as nx 
 from causallearn.search.ConstraintBased.PC import pc
 import wandb
+from tqdm import tqdm
 import time
 
 
@@ -35,6 +33,25 @@ def calculate_f1_score(oracle_adj_mat, estim_adj_mat):
     return precision, recall, f1_score
 
 
+def save_results(exp_time, mlp_time, exp_shd_list, mlp_shd_list, output_folder, name):
+    os.makedirs(output_folder, exist_ok=True)
+
+    with open(os.path.join(output_folder, name + '_times.csv'), 'w', newline='') as f:
+        writer = csv.writer(f)
+        writer.writerow(['Exp Time', 'MLP Time'])
+        writer.writerow([exp_time, mlp_time])
+
+
+    with open(os.path.join(output_folder, name +'_shd_results.csv'), 'w', newline='') as f:
+        writer = csv.writer(f)
+        writer.writerow(['Exp SHD', 'MLP SHD'])
+        max_len = max(len(exp_shd_list), len(mlp_shd_list))
+        for i in range(max_len):
+            exp_shd = exp_shd_list[i] if i < len(exp_shd_list) else ''
+            mlp_shd = mlp_shd_list[i] if i < len(mlp_shd_list) else ''
+            writer.writerow([exp_shd, mlp_shd])
+
+
 def pc_test(adj_path, x_path, mode='linear'):
     start_time = time.time()
     true_adj = np.loadtxt(adj_path, delimiter=',')
@@ -58,17 +75,24 @@ def pc_test(adj_path, x_path, mode='linear'):
 
 
 def pc_result(pc_test, data_folder, node_num, edge_num):
-    time = 0
-    shd_list = []
+    exp_time = 0
+    mlp_time = 0
+    exp_shd_list = []
+    mlp_shd_list = []
+
+    name = str(node_num)+str(edge_num)
+    wandb.init(
+        project="pc_algorithm",
+        name = name,
+    )
 
     folder_path = os.path.join(data_folder, node_num, 'ER')
     for data_type in os.listdir(folder_path):
         # if data_type != 'train' and data_type != 'mlp':
-        if data_type == 'uni':
-            dataset_path = os.path.join(folder_path, data_type, 'edge'+ edge_num)
-            
-            for data_folder in os.listdir(dataset_path):
-                print(dataset_path, data_folder)
+        dataset_path = os.path.join(folder_path, data_type, 'edge'+ edge_num)
+        
+        for data_folder in tqdm(os.listdir(dataset_path)):
+            if int(data_folder) > 450: # test data
                 for csv_path in os.listdir(os.path.join(dataset_path, data_folder)):
                     if csv_path.startswith('B_true'):
                         adj_path = os.path.join(dataset_path, data_folder, csv_path)
@@ -76,17 +100,27 @@ def pc_result(pc_test, data_folder, node_num, edge_num):
                         x_path = os.path.join(dataset_path, data_folder, csv_path)
                 if data_type == 'mlp':
                     shd, t = pc_test(adj_path, x_path, mode='nonlinear')
+                    mlp_shd_list.append(shd)
+                    mlp_time += t
                 else:
                     shd, t = pc_test(adj_path, x_path)
-                time += t
-                shd_list.append(shd)
-                print(shd, time)
-                return
+                    exp_time += t
+                    exp_shd_list.append(shd)
+                wandb.log({"exp_time":exp_time,
+                           "mlp_time":mlp_time,
+                           })
+    wandb.config.exp_data = len(exp_shd_list)
+    wandb.config.exp_mean = np.mean(exp_shd_list)
+    wandb.config.mlp_data = len(mlp_shd_list)
+    wandb.config.mlp_mean = np.mean(mlp_shd_list)
+
+    save_results(exp_time, mlp_time, exp_shd_list, mlp_shd_list, '/home/jina/reprod/result', name)
+
 
 if __name__ == '__main__':
-    data_folder = '/home/jina/reprod/report/data'
+    data_folder = '/home/jina/reprod/new_data/'
     node_num = 'five'
-    edge_num = '5'
+    edge_num = '8'
 
     pc_result(pc_test, data_folder, node_num, edge_num)
 
